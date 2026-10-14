@@ -1,0 +1,29 @@
+.barra_navegacion {
+    background-color: rgba(157, 204, 193, 0.4);
+    height: 50px;
+    border: 8px solid rgb(84, 84, 135);
+    border-radius: 10px;
+    font-size: 30px;
+    margin: 50px;
+    text-align: center;
+    padding-top: 5px;
+}
+.padre {
+    background-color: aqua;
+    height: 800px;
+    border: 10px solid rgb(160, 207, 212);
+    display: flex;
+}
+.menu{
+    background-color: rgb(212, 139, 223);
+    height: 50px;
+    font-size: 30px;
+}
+.tarjetas {
+    background-color: rgb(133, 133, 173);
+    height: 400px;
+    font-size: 30px;
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+}
