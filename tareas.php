@@ -1,0 +1,189 @@
+<?php
+session_start();
+require_once __DIR__ . '/includes/conexion.php';
+require_once __DIR__ . '/includes/funciones.php';
+requiereLogin();
+
+$id = (int) $_SESSION['id_usuario'];
+
+// Completar tarea + sumar puntos (transacción)
+if (isset($_GET['completar'])) {
+    $idTarea = (int) $_GET['completar'];
+    $mysqli->begin_transaction();
+    try {
+        $s = $mysqli->prepare(
+            "SELECT id_tarea, puntos, estado FROM tarea
+             WHERE id_tarea = ? AND id_usuario = ? AND estado = 'pendiente' LIMIT 1 FOR UPDATE"
+        );
+        $s->bind_param('ii', $idTarea, $id);
+        $s->execute();
+        $tarea = $s->get_result()->fetch_assoc();
+        if (!$tarea) {
+            throw new RuntimeException('Tarea no encontrada o ya completada.');
+        }
+        $pts = (int) $tarea['puntos'];
+        $up = $mysqli->prepare(
+            "UPDATE tarea SET estado = 'completada', completada_en = NOW()
+             WHERE id_tarea = ? AND id_usuario = ?"
+        );
+        $up->bind_param('ii', $idTarea, $id);
+        $up->execute();
+
+        $pu = $mysqli->prepare(
+            'UPDATE usuario SET puntos_totales = puntos_totales + ? WHERE id_usuario = ?'
+        );
+        $pu->bind_param('ii', $pts, $id);
+        $pu->execute();
+
+        $mysqli->commit();
+        $_SESSION['puntos_totales'] = (int) ($_SESSION['puntos_totales'] ?? 0) + $pts;
+        guardarMensaje('¡Tarea completada! +' . $pts . ' puntos.');
+    } catch (Throwable $e) {
+        $mysqli->rollback();
+        guardarMensaje($e->getMessage(), 'error');
+    }
+    header('Location: tareas.php');
+    exit;
+}
+
+// Eliminar
+if (isset($_GET['eliminar'])) {
+    $idTarea = (int) $_GET['eliminar'];
+    $d = $mysqli->prepare('DELETE FROM tarea WHERE id_tarea = ? AND id_usuario = ?');
+    $d->bind_param('ii', $idTarea, $id);
+    $d->execute();
+    if ($d->affected_rows) {
+        guardarMensaje('Tarea eliminada.');
+    } else {
+        guardarMensaje('No se pudo eliminar la tarea.', 'error');
+    }
+    header('Location: tareas.php');
+    exit;
+}
+
+$filtroMateria   = (int) ($_GET['materia'] ?? 0);
+$filtroEstado    = $_GET['estado'] ?? '';
+$filtroPrioridad = $_GET['prioridad'] ?? '';
+
+$sql = "SELECT t.*, m.nombre AS materia, m.color
+        FROM tarea t
+        INNER JOIN materia m ON m.id_materia = t.id_materia
+        WHERE t.id_usuario = ?";
+$types = 'i';
+$params = [$id];
+
+if ($filtroMateria > 0) {
+    $sql .= ' AND t.id_materia = ?';
+    $types .= 'i';
+    $params[] = $filtroMateria;
+}
+if (in_array($filtroEstado, ['pendiente', 'completada'], true)) {
+    $sql .= ' AND t.estado = ?';
+    $types .= 's';
+    $params[] = $filtroEstado;
+}
+if (in_array($filtroPrioridad, ['alta', 'media', 'baja'], true)) {
+    $sql .= ' AND t.prioridad = ?';
+    $types .= 's';
+    $params[] = $filtroPrioridad;
+}
+$sql .= ' ORDER BY FIELD(t.estado, \'pendiente\', \'completada\'), t.fecha_entrega ASC';
+
+$stmt = $mysqli->prepare($sql);
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$tareas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+$mats = $mysqli->prepare('SELECT id_materia, nombre FROM materia WHERE id_usuario = ? ORDER BY nombre');
+$mats->bind_param('i', $id);
+$mats->execute();
+$materias = $mats->get_result()->fetch_all(MYSQLI_ASSOC);
+
+$tituloPagina = 'Mis tareas';
+require __DIR__ . '/includes/layout_inicio.php';
+?>
+
+<div class="page-heading">
+  <div>
+    <h1>Mis tareas</h1>
+    <p>Filtra por materia, estado y prioridad. Solo ves tus propias tareas.</p>
+  </div>
+  <a class="btn btn-primary" href="tarea_form.php">+ Registrar tarea</a>
+</div>
+
+<section class="section-card">
+  <form class="toolbar" method="get">
+    <select name="materia">
+      <option value="0">Todas las materias</option>
+      <?php foreach ($materias as $m): ?>
+        <option value="<?= (int) $m['id_materia'] ?>" <?= $filtroMateria === (int) $m['id_materia'] ? 'selected' : '' ?>>
+          <?= e($m['nombre']) ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+    <select name="estado">
+      <option value="">Todos los estados</option>
+      <option value="pendiente" <?= $filtroEstado === 'pendiente' ? 'selected' : '' ?>>Pendiente</option>
+      <option value="completada" <?= $filtroEstado === 'completada' ? 'selected' : '' ?>>Completada</option>
+    </select>
+    <select name="prioridad">
+      <option value="">Todas las prioridades</option>
+      <option value="alta" <?= $filtroPrioridad === 'alta' ? 'selected' : '' ?>>Alta</option>
+      <option value="media" <?= $filtroPrioridad === 'media' ? 'selected' : '' ?>>Media</option>
+      <option value="baja" <?= $filtroPrioridad === 'baja' ? 'selected' : '' ?>>Baja</option>
+    </select>
+    <button class="btn btn-primary" type="submit">Filtrar</button>
+    <a class="btn btn-outline" href="tareas.php">Limpiar</a>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Materia</th>
+          <th>Entrega</th>
+          <th>Prioridad</th>
+          <th>Estado</th>
+          <th>Pts</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php if (!$tareas): ?>
+          <tr><td colspan="7" class="empty">No hay tareas con esos filtros.</td></tr>
+        <?php else: ?>
+          <?php foreach ($tareas as $t): ?>
+            <tr>
+              <td>
+                <div class="task-title"><?= e($t['titulo']) ?></div>
+                <?php if ($t['descripcion']): ?>
+                  <small style="color:var(--muted)"><?= e(mb_strimwidth($t['descripcion'], 0, 60, '…')) ?></small>
+                <?php endif; ?>
+              </td>
+              <td>
+                <span class="materia-dot" style="background:<?= e($t['color']) ?>"></span>
+                <?= e($t['materia']) ?>
+              </td>
+              <td><?= e(formatearFecha($t['fecha_entrega'])) ?></td>
+              <td><?= badgePrioridad(prioridadEfectiva($t)) ?></td>
+              <td><?= badgeEstado($t) ?></td>
+              <td><?= (int) $t['puntos'] ?></td>
+              <td class="acciones-cell">
+                <?php if ($t['estado'] === 'pendiente'): ?>
+                  <a class="small-action" href="tareas.php?completar=<?= (int) $t['id_tarea'] ?>">Completar</a>
+                  <a class="small-action" href="tarea_form.php?id=<?= (int) $t['id_tarea'] ?>">Editar</a>
+                <?php endif; ?>
+                <a class="small-action danger-action"
+                   href="tareas.php?eliminar=<?= (int) $t['id_tarea'] ?>"
+                   onclick="return confirm('¿Eliminar esta tarea?');">Eliminar</a>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<?php require __DIR__ . '/includes/layout_fin.php'; ?>
