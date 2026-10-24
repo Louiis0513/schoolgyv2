@@ -79,14 +79,23 @@ if (isset($_GET['editar'])) {
     $editar = $s->get_result()->fetch_assoc();
 }
 
+$countMats = $mysqli->prepare('SELECT COUNT(*) AS total FROM materia WHERE id_usuario = ?');
+$countMats->bind_param('i', $id);
+$countMats->execute();
+$totalMaterias = (int) $countMats->get_result()->fetch_assoc()['total'];
+$pag = calcularPaginacion($totalMaterias, 8);
+
 $list = $mysqli->prepare(
     "SELECT m.*,
             (SELECT COUNT(*) FROM tarea t WHERE t.id_materia = m.id_materia) AS total_tareas
      FROM materia m
      WHERE m.id_usuario = ?
-     ORDER BY m.nombre ASC"
+     ORDER BY m.nombre ASC
+     LIMIT ? OFFSET ?"
 );
-$list->bind_param('i', $id);
+$lim = $pag['por_pagina'];
+$off = $pag['offset'];
+$list->bind_param('iii', $id, $lim, $off);
 $list->execute();
 $materias = $list->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -110,7 +119,7 @@ require __DIR__ . '/includes/layout_inicio.php';
     <div class="card-heading">
       <div>
         <h3>Mis materias</h3>
-        <p><?= count($materias) ?> registradas</p>
+        <p><?= $totalMaterias ?> registradas</p>
       </div>
     </div>
     <div class="materia-list">
@@ -120,16 +129,21 @@ require __DIR__ . '/includes/layout_inicio.php';
         <?php foreach ($materias as $mat): ?>
           <div class="materia-item">
             <span class="color-swatch" style="background:<?= e($mat['color']) ?>"></span>
-            <strong><?= e($mat['nombre']) ?></strong>
-            <small><?= (int) $mat['total_tareas'] ?> tarea(s)</small>
-            <a class="small-action" href="materias.php?editar=<?= (int) $mat['id_materia'] ?>">Editar</a>
-            <a class="small-action danger-action"
-               href="materias.php?eliminar=<?= (int) $mat['id_materia'] ?>"
-               onclick="return confirm('¿Eliminar esta materia?');">Eliminar</a>
+            <div class="materia-item-info">
+              <strong><?= e($mat['nombre']) ?></strong>
+              <small><?= (int) $mat['total_tareas'] ?> tarea(s)</small>
+            </div>
+            <div class="materia-item-actions">
+              <a class="small-action" href="materias.php?editar=<?= (int) $mat['id_materia'] ?>&amp;pagina=<?= (int) $pag['pagina'] ?>">Editar</a>
+              <a class="small-action danger-action"
+                 href="materias.php?eliminar=<?= (int) $mat['id_materia'] ?>"
+                 onclick="return confirm('¿Eliminar esta materia?');">Eliminar</a>
+            </div>
           </div>
         <?php endforeach; ?>
       <?php endif; ?>
     </div>
+    <?= renderPaginacion($pag) ?>
   </section>
 
   <section class="section-card form-card">

@@ -44,35 +44,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Iniciar sesión | Schoolgy</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="img/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <section class="auth-screen">
-  <a class="back-link" href="index.php">← Volver al inicio</a>
-  <div class="auth-card">
-    <div class="auth-brand">
-      <span class="logo-icon" style="margin:0 auto 12px;">🎓</span>
-      <h1>Schoolgy</h1>
-      <p>Ingresa a tu cuenta para continuar con tu progreso.</p>
+  <aside class="auth-visual">
+    <a class="back-link" href="index.php">← Volver al inicio</a>
+    <img class="auth-bg" src="img/auth-study.jpg" alt="">
+    <div class="auth-visual-inner">
+      <img class="brand-logo" src="img/logo.svg" alt="">
+      <h2>Tu agenda escolar, clara y motivadora</h2>
+      <p>Ingresa para ver entregas urgentes, recordatorios y tu nivel de puntos.</p>
     </div>
-    <form method="post" autocomplete="on">
-      <?php if ($error): ?>
-        <p class="form-error"><?= e($error) ?></p>
-      <?php endif; ?>
-      <label for="correo">Correo electrónico</label>
-      <input id="correo" name="correo" type="email" placeholder="estudiante@liceo.edu.co"
-             value="<?= e($_POST['correo'] ?? '') ?>" required>
-      <label for="clave">Contraseña</label>
-      <input id="clave" name="clave" type="password" placeholder="Mínimo 8 caracteres" required minlength="8">
-      <button class="btn btn-primary full" type="submit">Iniciar sesión</button>
-      <p class="login-hint">Demo: <strong>sara@schoolgy.com</strong> / <strong>alumno123</strong></p>
-    </form>
-    <p class="auth-switch">¿No tienes cuenta? <a href="registro.php">Regístrate aquí</a></p>
+  </aside>
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <img class="brand-logo" src="img/logo.svg" alt="">
+        <h1>Iniciar sesión</h1>
+        <p>Accede a tu panel de tareas y progreso.</p>
+      </div>
+      <form method="post" autocomplete="on">
+        <?php if ($error): ?>
+          <p class="form-error"><?= e($error) ?></p>
+        <?php endif; ?>
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" name="correo" type="email" placeholder="sara@schoolgy.com"
+               value="<?= e($_POST['correo'] ?? 'sara@schoolgy.com') ?>" required>
+        <label for="clave">Contraseña</label>
+        <input id="clave" name="clave" type="password" placeholder="alumno123" required minlength="8" value="">
+        <button class="btn btn-primary full" type="submit">Entrar al panel</button>
+        <p class="login-hint">Cuenta demo lista para presentar:</p>
+        <div class="demo-chip">
+          <code>sara@schoolgy.com</code>
+          <code>alumno123</code>
+        </div>
+      </form>
+      <p class="auth-switch">¿No tienes cuenta? <a href="registro.php">Regístrate aquí</a></p>
+    </div>
   </div>
 </section>
 </body>

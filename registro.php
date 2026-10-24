@@ -51,37 +51,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Registro | Schoolgy</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="img/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <section class="auth-screen">
-  <a class="back-link" href="index.php">← Volver al inicio</a>
-  <div class="auth-card">
-    <div class="auth-brand">
-      <span class="logo-icon" style="margin:0 auto 12px;">🎓</span>
-      <h1>Crear cuenta</h1>
-      <p>Regístrate para organizar tus tareas y ganar puntos.</p>
+  <aside class="auth-visual">
+    <a class="back-link" href="index.php">← Volver al inicio</a>
+    <img class="auth-bg" src="img/auth-study.jpg" alt="">
+    <div class="auth-visual-inner">
+      <img class="brand-logo" src="img/logo.svg" alt="">
+      <h2>Crea tu cuenta en segundos</h2>
+      <p>Organiza materias, registra entregas y gana puntos por cada tarea cumplida.</p>
     </div>
-    <form method="post" autocomplete="on">
-      <?php if ($error): ?>
-        <p class="form-error"><?= e($error) ?></p>
-      <?php endif; ?>
-      <label for="nombre">Nombre</label>
-      <input id="nombre" name="nombre" type="text" minlength="3" maxlength="100"
-             value="<?= e($_POST['nombre'] ?? '') ?>" required>
-      <label for="correo">Correo electrónico</label>
-      <input id="correo" name="correo" type="email"
-             value="<?= e($_POST['correo'] ?? '') ?>" required>
-      <label for="clave">Contraseña</label>
-      <input id="clave" name="clave" type="password" minlength="8" required>
-      <button class="btn btn-primary full" type="submit">Registrarme</button>
-    </form>
-    <p class="auth-switch">¿Ya tienes cuenta? <a href="login.php">Inicia sesión</a></p>
+  </aside>
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <img class="brand-logo" src="img/logo.svg" alt="">
+        <h1>Crear cuenta</h1>
+        <p>Regístrate para organizar tus tareas y ganar puntos.</p>
+      </div>
+      <form method="post" autocomplete="on">
+        <?php if ($error): ?>
+          <p class="form-error"><?= e($error) ?></p>
+        <?php endif; ?>
+        <label for="nombre">Nombre</label>
+        <input id="nombre" name="nombre" type="text" minlength="3" maxlength="100"
+               placeholder="Tu nombre completo"
+               value="<?= e($_POST['nombre'] ?? '') ?>" required>
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" name="correo" type="email" placeholder="estudiante@liceo.edu.co"
+               value="<?= e($_POST['correo'] ?? '') ?>" required>
+        <label for="clave">Contraseña</label>
+        <input id="clave" name="clave" type="password" minlength="8" placeholder="Mínimo 8 caracteres" required>
+        <button class="btn btn-primary full" type="submit">Registrarme</button>
+      </form>
+      <p class="auth-switch">¿Ya tienes cuenta? <a href="login.php">Inicia sesión</a></p>
+    </div>
   </div>
 </section>
 </body>
