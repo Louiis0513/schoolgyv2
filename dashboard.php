@@ -2,60 +2,20 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 requiereLogin();
 
 $id = (int) $_SESSION['id_usuario'];
 
-$u = $mysqli->prepare('SELECT puntos_totales FROM usuario WHERE id_usuario = ?');
-$u->bind_param('i', $id);
-$u->execute();
-$_SESSION['puntos_totales'] = (int) ($u->get_result()->fetch_assoc()['puntos_totales'] ?? 0);
-
-$puntos = (int) $_SESSION['puntos_totales'];
+$puntos = obtenerPuntosUsuario($mysqli, $id);
+$_SESSION['puntos_totales'] = $puntos;
 $nivel  = calcularNivel($puntos);
 
-$stmt = $mysqli->prepare(
-    "SELECT
-       SUM(estado = 'pendiente') AS pendientes,
-       SUM(estado = 'completada') AS completadas,
-       SUM(estado = 'pendiente' AND fecha_entrega < NOW()) AS vencidas
-     FROM tarea WHERE id_usuario = ?"
-);
-$stmt->bind_param('i', $id);
-$stmt->execute();
-$stats = $stmt->get_result()->fetch_assoc();
-
-$m = $mysqli->prepare('SELECT COUNT(*) AS total FROM materia WHERE id_usuario = ?');
-$m->bind_param('i', $id);
-$m->execute();
-$totalMaterias = (int) $m->get_result()->fetch_assoc()['total'];
-
-$urgentes = $mysqli->prepare(
-    "SELECT t.*, m.nombre AS materia, m.color
-     FROM tarea t
-     INNER JOIN materia m ON m.id_materia = t.id_materia
-     WHERE t.id_usuario = ? AND t.estado = 'pendiente'
-     ORDER BY t.fecha_entrega ASC
-     LIMIT 6"
-);
-$urgentes->bind_param('i', $id);
-$urgentes->execute();
-$listaUrgentes = $urgentes->get_result()->fetch_all(MYSQLI_ASSOC);
-
-$avisos = $mysqli->prepare(
-    "SELECT t.titulo, t.fecha_aviso, t.fecha_entrega, m.nombre AS materia
-     FROM tarea t
-     INNER JOIN materia m ON m.id_materia = t.id_materia
-     WHERE t.id_usuario = ?
-       AND t.estado = 'pendiente'
-       AND t.fecha_aviso IS NOT NULL
-       AND t.fecha_aviso <= NOW()
-     ORDER BY t.fecha_aviso ASC
-     LIMIT 5"
-);
-$avisos->bind_param('i', $id);
-$avisos->execute();
-$listaAvisos = $avisos->get_result()->fetch_all(MYSQLI_ASSOC);
+$stats = obtenerStatsUsuario($mysqli, $id);
+$materias = obtenerMateriasUsuario($mysqli, $id);
+$totalMaterias = count($materias);
+$listaUrgentes = obtenerUrgentes($mysqli, $id, 6);
+$listaAvisos = obtenerAvisos($mysqli, $id, 5);
 
 $tituloPagina = 'Dashboard';
 require __DIR__ . '/includes/layout_inicio.php';

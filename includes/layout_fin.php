@@ -4,6 +4,6 @@
     </footer>
   </main>
 </div>
-<script src="js/app.js"></script>
+<script src="js/app.js?v=<?= (int) (@filemtime(__DIR__ . '/../js/app.js') ?: time()) ?>"></script>
 </body>
 </html>

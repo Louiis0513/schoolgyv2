@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 requiereLogin();
 
 $id = (int) $_SESSION['id_usuario'];
@@ -27,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt->bind_param('ssii', $nombre, $color, $idMateria, $id);
             $stmt->execute();
+            cacheParcheMaterias($mysqli, $id, $idMateria, $nombre, $color, false);
             guardarMensaje('Materia actualizada.');
             header('Location: materias.php');
             exit;
@@ -37,6 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $stmt->bind_param('iss', $id, $nombre, $color);
         $stmt->execute();
+        $nuevoId = (int) $mysqli->insert_id;
+        cacheParcheMaterias($mysqli, $id, $nuevoId ?: null, $nombre, $color, false);
         guardarMensaje('Materia creada.');
         header('Location: materias.php');
         exit;
@@ -61,6 +65,7 @@ if (isset($_GET['eliminar'])) {
             $d = $mysqli->prepare('DELETE FROM materia WHERE id_materia = ? AND id_usuario = ?');
             $d->bind_param('ii', $idMateria, $id);
             $d->execute();
+            cacheParcheMaterias($mysqli, $id, $idMateria, null, null, true);
             guardarMensaje('Materia eliminada.');
         }
     }
@@ -71,33 +76,27 @@ if (isset($_GET['eliminar'])) {
 $editar = null;
 if (isset($_GET['editar'])) {
     $idMateria = (int) $_GET['editar'];
-    $s = $mysqli->prepare(
-        'SELECT * FROM materia WHERE id_materia = ? AND id_usuario = ? LIMIT 1'
-    );
-    $s->bind_param('ii', $idMateria, $id);
-    $s->execute();
-    $editar = $s->get_result()->fetch_assoc();
+    $todasMats = obtenerMateriasConConteo($mysqli, $id);
+    foreach ($todasMats as $m) {
+        if ((int) $m['id_materia'] === $idMateria) {
+            $editar = $m;
+            break;
+        }
+    }
+    if (!$editar) {
+        $s = $mysqli->prepare(
+            'SELECT * FROM materia WHERE id_materia = ? AND id_usuario = ? LIMIT 1'
+        );
+        $s->bind_param('ii', $idMateria, $id);
+        $s->execute();
+        $editar = $s->get_result()->fetch_assoc();
+    }
 }
 
-$countMats = $mysqli->prepare('SELECT COUNT(*) AS total FROM materia WHERE id_usuario = ?');
-$countMats->bind_param('i', $id);
-$countMats->execute();
-$totalMaterias = (int) $countMats->get_result()->fetch_assoc()['total'];
+$todasMaterias = obtenerMateriasConConteo($mysqli, $id);
+$totalMaterias = count($todasMaterias);
 $pag = calcularPaginacion($totalMaterias, 8);
-
-$list = $mysqli->prepare(
-    "SELECT m.*,
-            (SELECT COUNT(*) FROM tarea t WHERE t.id_materia = m.id_materia) AS total_tareas
-     FROM materia m
-     WHERE m.id_usuario = ?
-     ORDER BY m.nombre ASC
-     LIMIT ? OFFSET ?"
-);
-$lim = $pag['por_pagina'];
-$off = $pag['offset'];
-$list->bind_param('iii', $id, $lim, $off);
-$list->execute();
-$materias = $list->get_result()->fetch_all(MYSQLI_ASSOC);
+$materias = array_slice($todasMaterias, $pag['offset'], $pag['por_pagina']);
 
 $tituloPagina = 'Gestión de materias';
 require __DIR__ . '/includes/layout_inicio.php';

@@ -19,7 +19,7 @@ $flash         = obtenerMensaje();
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title><?= e($tituloPagina) ?> | Schoolgy</title>
   <link rel="icon" href="img/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=<?= (int) (@filemtime(__DIR__ . '/../css/app.css') ?: time()) ?>">
 </head>
 <body>
 <div class="app-shell">

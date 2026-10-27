@@ -2,40 +2,20 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 requiereLogin();
 
 $id = (int) $_SESSION['id_usuario'];
 
-$count = $mysqli->prepare(
-    "SELECT COUNT(*) AS total FROM tarea WHERE id_usuario = ? AND estado = 'completada'"
-);
-$count->bind_param('i', $id);
-$count->execute();
-$totalTareas = (int) $count->get_result()->fetch_assoc()['total'];
-
-$ptsStmt = $mysqli->prepare(
-    "SELECT COALESCE(SUM(puntos), 0) AS total_pts
-     FROM tarea WHERE id_usuario = ? AND estado = 'completada'"
-);
-$ptsStmt->bind_param('i', $id);
-$ptsStmt->execute();
-$totalPts = (int) $ptsStmt->get_result()->fetch_assoc()['total_pts'];
+$todas = obtenerCompletadas($mysqli, $id);
+$totalTareas = count($todas);
+$totalPts = 0;
+foreach ($todas as $t) {
+    $totalPts += (int) ($t['puntos'] ?? 0);
+}
 
 $pag = calcularPaginacion($totalTareas, 8);
-
-$stmt = $mysqli->prepare(
-    "SELECT t.*, m.nombre AS materia, m.color
-     FROM tarea t
-     INNER JOIN materia m ON m.id_materia = t.id_materia
-     WHERE t.id_usuario = ? AND t.estado = 'completada'
-     ORDER BY t.completada_en DESC, t.fecha_entrega DESC
-     LIMIT ? OFFSET ?"
-);
-$lim = $pag['por_pagina'];
-$off = $pag['offset'];
-$stmt->bind_param('iii', $id, $lim, $off);
-$stmt->execute();
-$tareas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$tareas = array_slice($todas, $pag['offset'], $pag['por_pagina']);
 
 $tituloPagina = 'Tareas completadas';
 require __DIR__ . '/includes/layout_inicio.php';

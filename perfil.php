@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 requiereLogin();
 
 $id = (int) $_SESSION['id_usuario'];
@@ -13,6 +14,9 @@ $stmt = $mysqli->prepare(
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $usuario = $stmt->get_result()->fetch_assoc();
+if ($usuario) {
+    cacheParchePuntosUsuario($id, (int) $usuario['puntos_totales']);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = trim($_POST['nombre'] ?? '');
@@ -38,6 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $up->execute();
         $_SESSION['nombre'] = $nombre;
+        if ($usuario) {
+            cacheParchePuntosUsuario($id, (int) $usuario['puntos_totales']);
+        }
         guardarMensaje('Perfil actualizado.');
         header('Location: perfil.php');
         exit;

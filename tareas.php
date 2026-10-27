@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 requiereLogin();
 
 $id = (int) $_SESSION['id_usuario'];
@@ -25,6 +26,7 @@ function redirectTareas(array $filtros): never
 
 if (isset($_GET['completar'])) {
     $idTarea = (int) $_GET['completar'];
+    $antes = cargarTareaConMateria($mysqli, $id, $idTarea);
     $mysqli->begin_transaction();
     try {
         $s = $mysqli->prepare(
@@ -53,6 +55,8 @@ if (isset($_GET['completar'])) {
 
         $mysqli->commit();
         $_SESSION['puntos_totales'] = (int) ($_SESSION['puntos_totales'] ?? 0) + $pts;
+        cacheParcheTarea($mysqli, $id, $idTarea, $antes);
+        cacheParchePuntosUsuario($id, (int) $_SESSION['puntos_totales']);
         guardarMensaje('¡Tarea completada! +' . $pts . ' puntos.');
     } catch (Throwable $e) {
         $mysqli->rollback();
@@ -63,10 +67,12 @@ if (isset($_GET['completar'])) {
 
 if (isset($_GET['eliminar'])) {
     $idTarea = (int) $_GET['eliminar'];
+    $antes = cargarTareaConMateria($mysqli, $id, $idTarea);
     $d = $mysqli->prepare('DELETE FROM tarea WHERE id_tarea = ? AND id_usuario = ?');
     $d->bind_param('ii', $idTarea, $id);
     $d->execute();
     if ($d->affected_rows) {
+        cacheParcheTareaEliminada($mysqli, $id, $idTarea, $antes);
         guardarMensaje('Tarea eliminada.');
     } else {
         guardarMensaje('No se pudo eliminar la tarea.', 'error');
@@ -74,55 +80,12 @@ if (isset($_GET['eliminar'])) {
     redirectTareas($conservarFiltros);
 }
 
-$where = ' WHERE t.id_usuario = ?';
-$types = 'i';
-$params = [$id];
-
-if ($filtroMateria > 0) {
-    $where .= ' AND t.id_materia = ?';
-    $types .= 'i';
-    $params[] = $filtroMateria;
-}
-if (in_array($filtroEstado, ['pendiente', 'completada'], true)) {
-    $where .= ' AND t.estado = ?';
-    $types .= 's';
-    $params[] = $filtroEstado;
-}
-if (in_array($filtroPrioridad, ['alta', 'media', 'baja'], true)) {
-    $where .= ' AND t.prioridad = ?';
-    $types .= 's';
-    $params[] = $filtroPrioridad;
-}
-
-$countSql = "SELECT COUNT(*) AS total
-             FROM tarea t
-             INNER JOIN materia m ON m.id_materia = t.id_materia
-             $where";
-$countStmt = $mysqli->prepare($countSql);
-$countStmt->bind_param($types, ...$params);
-$countStmt->execute();
-$totalTareas = (int) $countStmt->get_result()->fetch_assoc()['total'];
-
+$todas = obtenerTareasFiltradas($mysqli, $id, $filtroMateria, $filtroEstado, $filtroPrioridad);
+$totalTareas = count($todas);
 $pag = calcularPaginacion($totalTareas, 8);
+$tareas = array_slice($todas, $pag['offset'], $pag['por_pagina']);
 
-$sql = "SELECT t.*, m.nombre AS materia, m.color
-        FROM tarea t
-        INNER JOIN materia m ON m.id_materia = t.id_materia
-        $where
-        ORDER BY FIELD(t.estado, 'pendiente', 'completada'), t.fecha_entrega ASC
-        LIMIT ? OFFSET ?";
-$typesList = $types . 'ii';
-$paramsList = [...$params, $pag['por_pagina'], $pag['offset']];
-
-$stmt = $mysqli->prepare($sql);
-$stmt->bind_param($typesList, ...$paramsList);
-$stmt->execute();
-$tareas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-$mats = $mysqli->prepare('SELECT id_materia, nombre FROM materia WHERE id_usuario = ? ORDER BY nombre');
-$mats->bind_param('i', $id);
-$mats->execute();
-$materias = $mats->get_result()->fetch_all(MYSQLI_ASSOC);
+$materias = obtenerMateriasUsuario($mysqli, $id, false);
 
 $qsFiltros = $conservarFiltros ? ('&' . http_build_query($conservarFiltros)) : '';
 

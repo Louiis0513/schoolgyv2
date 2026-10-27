@@ -2,43 +2,18 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 requiereLogin();
 
 $id = (int) $_SESSION['id_usuario'];
 
-$u = $mysqli->prepare('SELECT puntos_totales FROM usuario WHERE id_usuario = ?');
-$u->bind_param('i', $id);
-$u->execute();
-$puntos = (int) ($u->get_result()->fetch_assoc()['puntos_totales'] ?? 0);
+$puntos = obtenerPuntosUsuario($mysqli, $id);
 $_SESSION['puntos_totales'] = $puntos;
 $nivel = calcularNivel($puntos);
 $barra = progresoNivel($puntos);
 
-$s = $mysqli->prepare(
-    "SELECT
-       SUM(estado = 'completada') AS completadas,
-       SUM(estado = 'pendiente') AS pendientes,
-       SUM(estado = 'pendiente' AND fecha_entrega < NOW()) AS vencidas,
-       COUNT(*) AS total
-     FROM tarea WHERE id_usuario = ?"
-);
-$s->bind_param('i', $id);
-$s->execute();
-$stats = $s->get_result()->fetch_assoc();
-
-$porMateria = $mysqli->prepare(
-    "SELECT m.nombre, m.color,
-            SUM(t.estado = 'completada') AS hechas,
-            COUNT(t.id_tarea) AS total
-     FROM materia m
-     LEFT JOIN tarea t ON t.id_materia = m.id_materia AND t.id_usuario = m.id_usuario
-     WHERE m.id_usuario = ?
-     GROUP BY m.id_materia
-     ORDER BY m.nombre"
-);
-$porMateria->bind_param('i', $id);
-$porMateria->execute();
-$materias = $porMateria->get_result()->fetch_all(MYSQLI_ASSOC);
+$stats = obtenerStatsUsuario($mysqli, $id);
+$materias = obtenerProgresoPorMateria($mysqli, $id);
 
 $tituloPagina = 'Mi progreso';
 require __DIR__ . '/includes/layout_inicio.php';

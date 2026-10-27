@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 requiereLogin();
 
 $id = (int) $_SESSION['id_usuario'];
@@ -10,12 +11,7 @@ $error = '';
 $tarea = null;
 
 if ($idTarea > 0) {
-    $s = $mysqli->prepare(
-        'SELECT * FROM tarea WHERE id_tarea = ? AND id_usuario = ? LIMIT 1'
-    );
-    $s->bind_param('ii', $idTarea, $id);
-    $s->execute();
-    $tarea = $s->get_result()->fetch_assoc();
+    $tarea = obtenerTareaUsuario($mysqli, $id, $idTarea);
     if (!$tarea) {
         guardarMensaje('Tarea no encontrada.', 'error');
         header('Location: tareas.php');
@@ -23,10 +19,7 @@ if ($idTarea > 0) {
     }
 }
 
-$mats = $mysqli->prepare('SELECT id_materia, nombre, color FROM materia WHERE id_usuario = ? ORDER BY nombre');
-$mats->bind_param('i', $id);
-$mats->execute();
-$materias = $mats->get_result()->fetch_all(MYSQLI_ASSOC);
+$materias = obtenerMateriasUsuario($mysqli, $id);
 
 if (!$materias) {
     guardarMensaje('Primero crea al menos una materia.', 'error');
@@ -77,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $entregaSql = $dtEntrega->format('Y-m-d H:i:s');
                 $puntos = puntosPorPrioridad($prioridad);
                 $desc = $descripcion !== '' ? $descripcion : null;
+                $antes = $tarea ? cargarTareaConMateria($mysqli, $id, $idTarea) : null;
 
                 if ($tarea) {
                     $sql = 'UPDATE tarea
@@ -97,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $id
                     );
                     $stmt->execute();
+                    cacheParcheTarea($mysqli, $id, $idTarea, $antes);
                     guardarMensaje('Tarea actualizada.');
                 } else {
                     $sql = 'INSERT INTO tarea
@@ -115,6 +110,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $idMateria
                     );
                     $stmt->execute();
+                    $nuevoId = (int) $mysqli->insert_id;
+                    if ($nuevoId > 0) {
+                        cacheParcheTarea($mysqli, $id, $nuevoId);
+                    }
                     guardarMensaje('Tarea registrada.');
                 }
                 header('Location: tareas.php');

@@ -26,19 +26,29 @@ Slogan: *“La forma más fácil y divertida de cumplir con tus tareas.”*
 - Tareas con filtros + vista tabla (desktop) / cards (móvil)
 - Seed realista: Matemáticas, Español, Ciencias, Sociales, Inglés, Tecnología, Ed. Física
 
+## Caché (estilo Strelee)
+
+- Motor en archivos: `includes/cache.php` → carpeta `cache/` (bloqueada por `.htaccess`).
+- TTL 4 h en listas/fichas; 15 min en stats/urgentes/avisos (dependen de `NOW()`).
+- Escritura atómica + **parche write-through** al crear/editar/completar/borrar (sin wipe total).
+- Estáticos (CSS/JS/img) con `Expires` + `Cache-Control` en `.htaccess`; bust con `?v=filemtime`.
+
 ## Estructura
 
 ```
 Schoolgy/
 ├── bd/schoolgy.sql
+├── cache/               ← ficheros .cache (no público)
 ├── css/app.css
 ├── js/app.js
 ├── img/                 ← logo, iconos, fotos escolares
 ├── includes/
+│   ├── cache.php
 │   ├── conexion.php
 │   ├── funciones.php
 │   ├── layout_inicio.php
 │   └── layout_fin.php
+├── .htaccess            ← caché de estáticos Apache
 ├── index.php · login.php · registro.php · logout.php
 ├── dashboard.php · materias.php · tareas.php · tarea_form.php
 ├── completadas.php · progreso.php · perfil.php

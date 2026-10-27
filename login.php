@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/includes/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('privado');
 
 soloVisitantes();
 
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['correo']         = $usuario['correo'];
             $_SESSION['puntos_totales'] = (int) $usuario['puntos_totales'];
             $_SESSION['rol']            = $usuario['rol'];
+            cacheParchePuntosUsuario((int) $usuario['id_usuario'], (int) $usuario['puntos_totales']);
             guardarMensaje('¡Bienvenida/o, ' . $usuario['nombre'] . '!');
             header('Location: dashboard.php');
             exit;
@@ -47,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Iniciar sesión | Schoolgy</title>
   <link rel="icon" href="img/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=<?= (int) (@filemtime(__DIR__ . '/css/app.css') ?: time()) ?>">
 </head>
 <body>
 <section class="auth-screen">

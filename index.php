@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/includes/funciones.php';
+enviarHeadersCache('publico');
 $logueado = usuarioLogueado();
 $cssVer = @filemtime(__DIR__ . '/css/app.css') ?: time();
 ?>

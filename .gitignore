@@ -1,0 +1,9 @@
+# Caché en archivos (runtime); se mantiene cache/.htaccess
+cache/*
+!cache/.htaccess
+
+# Sistema / IDE
+.DS_Store
+*.swp
+.idea/
+.vscode/
